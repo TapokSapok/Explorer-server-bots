@@ -23,7 +23,7 @@ export class SessionsService {
       return this.bots.size;
    }
 
-   getBot(botId: number) {
+   getSession(botId: number) {
       return this.bots.get(botId);
    }
 

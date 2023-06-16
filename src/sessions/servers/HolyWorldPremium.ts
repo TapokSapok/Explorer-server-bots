@@ -5,6 +5,7 @@ import { Injectable } from '@nestjs/common';
 import * as mineflayer from 'mineflayer';
 import { BotsRepository } from 'src/repositories/bots.repository';
 import { threadId } from 'worker_threads';
+import { SessionsGateway } from '../sessions.gateway';
 
 export class HolyWorldPremium {
    bot: mineflayer.Bot;
@@ -12,12 +13,20 @@ export class HolyWorldPremium {
    socketId: string;
    botId: number;
    sessionsService: SessionsService;
+   sessionsGateway: SessionsGateway;
 
-   constructor({ username, botId, socketId, sessionsService }) {
+   constructor({
+      username,
+      botId,
+      socketId,
+      sessionsService,
+      sessionsGateway,
+   }) {
       this.username = username;
       this.socketId = socketId;
       this.botId = botId;
       this.sessionsService = sessionsService;
+      this.sessionsGateway = sessionsGateway;
 
       this.bot = mineflayer.createBot({
          username: this.username,
@@ -31,7 +40,7 @@ export class HolyWorldPremium {
    }
 
    emit(event: string, data?: any) {
-      this.sessionsService.emit(this.socketId, event, data);
+      this.sessionsGateway.emit(this.socketId, event, data);
    }
 
    initEvents() {
@@ -64,9 +73,9 @@ export class HolyWorldPremium {
       // });
    }
    // ADDONS
-   // logout() {
-   //    this.bot.quit('Самостоятельный выход.');
-   //    this.client.emit('logout', { message: 'Самостоятельный выход' });
-   //    this.sessionsService.changeBotStatus(this.botId, 'offline');
-   // }
+   logout() {
+      this.bot.quit('Самостоятельный выход.');
+      this.emit('logout', { message: 'Самостоятельный выход' });
+      this.sessionsService.changeBotStatus(this.botId, 'offline');
+   }
 }
