@@ -17,4 +17,8 @@ export class AuthGateway implements OnGatewayConnection {
       console.log('connected', client.id);
       await this.authService.connectionGuard(client);
    }
+
+   handleDisconnect(client: Socket) {
+      console.log('Client disconnected');
+   }
 }

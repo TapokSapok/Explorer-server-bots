@@ -6,7 +6,8 @@ import { AuthGateway } from './auth.gateway';
 import { PrismaClient } from '@prisma/client';
 import { AuthService } from './auth.service';
 import { BotsRepository } from 'src/repositories/bots.repository';
-import { ControlService } from 'src/control/control.service';
+import { SessionsService } from 'src/sessions/sessions.service';
+import { SessionsModule } from 'src/sessions/sessions.module';
 
 @Module({
    providers: [
@@ -16,7 +17,8 @@ import { ControlService } from 'src/control/control.service';
       JwtService,
       AuthService,
       BotsRepository,
-      ControlService,
+      SessionsService,
    ],
+   imports: [SessionsModule],
 })
 export class AuthModule {}

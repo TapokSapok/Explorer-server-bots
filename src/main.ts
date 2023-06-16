@@ -1,7 +1,8 @@
 import { NestFactory } from '@nestjs/core';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 import { AppModule } from './app.module';
-import { ControlService } from './control/control.service';
 import { BotsRepository } from './repositories/bots.repository';
+import * as socketio from 'socket.io';
 
 const start = async () => {
    const PORT = process.env.PORT || 7070;
