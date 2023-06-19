@@ -64,4 +64,109 @@ export class SessionsGateway {
       const session = this.sessionsService.getSession(botId);
       session?.logout();
    }
+
+   @SubscribeMessage('get-last-messages')
+   getLastMessages(client: Socket) {
+      const botId = Number(client.handshake.headers.botid);
+      const session = this.sessionsService.getSession(botId);
+      if (session) {
+         client.emit('set-last-messages', session.lastMessages);
+      }
+   }
+
+   @SubscribeMessage('get-items')
+   getItems(client: Socket) {
+      const botId = Number(client.handshake.headers.botid);
+      const session = this.sessionsService.getSession(botId);
+      if (session) {
+         session.setItems();
+      }
+   }
+
+   @SubscribeMessage('get-quick-bar-slot')
+   getQuickBarSlot(client: Socket) {
+      const botId = Number(client.handshake.headers.botid);
+      const session = this.sessionsService.getSession(botId);
+      if (session) {
+         session.getQuickBarSlot();
+      }
+   }
+
+   @SubscribeMessage('set-quick-bar-slot')
+   setQuickBarSlot(client: Socket, slot: number) {
+      const botId = Number(client.handshake.headers.botid);
+      const session = this.sessionsService.getSession(botId);
+      if (session) {
+         session.setQuickBarSlot(slot);
+      }
+   }
+
+   @SubscribeMessage('move-item')
+   moveItem(
+      client: Socket,
+      { sourceSlot, destSlot }: { sourceSlot: number; destSlot: number }
+   ) {
+      const botId = Number(client.handshake.headers.botid);
+      const session = this.sessionsService.getSession(botId);
+      if (session) {
+         session.moveItem(sourceSlot, destSlot);
+      }
+   }
+
+   @SubscribeMessage('throw-items')
+   throwItems(client: Socket, item: any) {
+      const botId = Number(client.handshake.headers.botid);
+      const session = this.sessionsService.getSession(botId);
+      if (session) {
+         session.throwItems(item);
+      }
+   }
+
+   @SubscribeMessage('get-info')
+   getInfo(client: Socket) {
+      const botId = Number(client.handshake.headers.botid);
+      const session = this.sessionsService.getSession(botId);
+      if (session) {
+         session.getInfo();
+      }
+   }
+
+   @SubscribeMessage('use-item')
+   useItem(client: Socket) {
+      const botId = Number(client.handshake.headers.botid);
+      const session = this.sessionsService.getSession(botId);
+      if (session) {
+         session.useItem();
+      }
+   }
+
+   @SubscribeMessage('click-window')
+   clickWindow(
+      client: Socket,
+      { slot, mouseButton }: { slot: number; mouseButton: number }
+   ) {
+      const botId = Number(client.handshake.headers.botid);
+      const session = this.sessionsService.getSession(botId);
+      if (session) {
+         session.clickWindow(slot, mouseButton);
+      }
+   }
+
+   @SubscribeMessage('close-window')
+   closeWindow(client: Socket) {
+      const botId = Number(client.handshake.headers.botid);
+      const session = this.sessionsService.getSession(botId);
+      if (session) {
+         session.closeWindow();
+      }
+   }
+
+   @SubscribeMessage('get-current-window')
+   getCurrentWindow(client: Socket) {
+      const botId = Number(client.handshake.headers.botid);
+      const session = this.sessionsService.getSession(botId);
+      if (session) {
+         session.setCurrentWindow();
+      }
+   }
 }

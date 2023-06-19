@@ -13,14 +13,17 @@ export class SessionsService {
    constructor(
       @Inject('BOTS_SESSIONS')
       private readonly bots: Map<number, HolyWorldPremium>,
-      // private readonly socketIoAdapter: SocketIoAdapter,
       private botsRepository: BotsRepository
-   ) {
-      // this.io = socketIoAdapter.server;
-   }
+   ) {}
 
    getSessionsLength() {
       return this.bots.size;
+   }
+
+   getSessionExist(botId: number) {
+      const sessionExist = this.bots.has(botId);
+      console.log(sessionExist);
+      return sessionExist;
    }
 
    getSession(botId: number) {
@@ -29,15 +32,8 @@ export class SessionsService {
 
    changeSessionSocketId(botId: number, socketId: string) {
       const bot = this.bots.get(botId);
-      const botsSize = this.bots.size;
       if (bot) {
          bot.socketId = socketId;
-         console.log(
-            'боту',
-            bot?.bot?.username,
-            'был сменён сокет',
-            `на ${socketId}`
-         );
       }
    }
 
@@ -52,18 +48,15 @@ export class SessionsService {
       console.log('Новая сессия:', botId);
       this.bots.set(botId, newBot);
       const botsSize = this.bots.size;
-      console.log(`botSize: ${botsSize}`);
    }
 
    destroySession(botId: number) {
       this.bots.delete(botId);
       const botsSize = this.bots.size;
-      console.log(`botSize: ${botsSize}`);
    }
 
    emit(socketId: string, event: string, data?: any) {
       console.log('server', this.io);
       console.log('emit', this.io?.sockets);
-      // this.server.sockets.sockets[socketId].emit(event, data ? data : null);
    }
 }

@@ -55,8 +55,9 @@ export class AuthService {
          return;
       }
 
-      if (bot.status === 'online') {
-         console.log('Смена сокета', client.id);
+      const sessionExist = this.sessionsService.getSessionExist(bot.id);
+
+      if (sessionExist) {
          this.sessionsService.changeSessionSocketId(bot.id, client.id);
       }
 
