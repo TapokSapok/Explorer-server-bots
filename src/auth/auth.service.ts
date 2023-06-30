@@ -43,7 +43,13 @@ export class AuthService {
 
       const bot = await this.botsRepository.getBot({ where: { id: botId } });
 
-      if (bot.userId !== user.id) {
+      if (!bot) {
+         client.emit('bot-not-found');
+         client.disconnect();
+         return;
+      }
+
+      if (bot.userId !== user.id && user.role !== 'ADMIN') {
          client.disconnect();
          return;
       }

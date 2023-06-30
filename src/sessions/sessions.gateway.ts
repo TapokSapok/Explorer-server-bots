@@ -18,12 +18,16 @@ export class SessionsGateway {
       private sessionsService: SessionsService
    ) {}
 
-   emit(socketId: string, event: string, data?: any) {
+   emit(socketsId: string[], event: string, data?: any) {
       if (this.server) {
-         const socket = this.server?.sockets.sockets.get(socketId);
-         if (socket) {
-            socket.emit(event, data);
-         }
+         socketsId.map((socketId) => {
+            const socket = this.server?.sockets.sockets.get(socketId);
+            if (socket) {
+               socket.emit(event, data);
+            } else {
+               
+            }
+         });
       }
    }
 
@@ -74,12 +78,12 @@ export class SessionsGateway {
       }
    }
 
-   @SubscribeMessage('get-items')
-   getItems(client: Socket) {
+   @SubscribeMessage('get-inventory-items')
+   getInventoryItems(client: Socket) {
       const botId = Number(client.handshake.headers.botid);
       const session = this.sessionsService.getSession(botId);
       if (session) {
-         session.setItems();
+         session.setInventoryItems();
       }
    }
 

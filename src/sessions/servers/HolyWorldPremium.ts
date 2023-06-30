@@ -7,6 +7,17 @@ import { BotsRepository } from 'src/repositories/bots.repository';
 import { threadId } from 'worker_threads';
 import { SessionsGateway } from '../sessions.gateway';
 import { throws } from 'assert';
+import fs from 'fs';
+import Jimp from 'jimp';
+import PNGImage from 'pngjs-image';
+import path from 'path';
+import map from './map';
+
+/*
+   Для lastMessages сделать ограничение.
+
+
+*/
 
 export interface IItem {
    type: number;
@@ -22,11 +33,16 @@ export interface IItem {
 export class HolyWorldPremium {
    bot: mineflayer.Bot;
    username: string;
-   socketId: string;
+   // socketId: string;
+   socketId: string[];
    botId: number;
    sessionsService: SessionsService;
    sessionsGateway: SessionsGateway;
-   lastMessages: { message: string; timestamp: Date }[];
+   lastMessages: {
+      json: any[];
+   }[];
+   inventoryItems: IItem[];
+   currentWindowItems: IItem[];
 
    constructor({
       username,
@@ -36,16 +52,21 @@ export class HolyWorldPremium {
       sessionsGateway,
    }) {
       this.username = username;
-      this.socketId = socketId;
       this.botId = botId;
       this.sessionsService = sessionsService;
       this.sessionsGateway = sessionsGateway;
+
+      this.socketId = [];
+      this.socketId.push(socketId);
+
       this.lastMessages = [];
+      this.inventoryItems = [];
+      this.currentWindowItems = [];
 
       this.bot = mineflayer.createBot({
          // username: this.username,
          // host: 'localhost',
-         // port: 54583,
+         // port: 57125,
          version: '1.18.2',
 
          username: 'SapokTapok',
@@ -61,6 +82,16 @@ export class HolyWorldPremium {
    }
 
    initEvents() {
+      this.bot._client.on('map', (packet) => {
+         const mapId = packet.itemDamage;
+         this.emit('map-packet', packet);
+         if (typeof packet.data != 'undefined' && packet.data) {
+            console.log(__dirname);
+            map(packet.data).writeImage(__dirname + `/map${mapId}.png`);
+            this.mergeMaps();
+         }
+      });
+
       this.bot.once('login', () => {
          console.log(this.socketId);
          this.emit('server-connected');
@@ -68,7 +99,7 @@ export class HolyWorldPremium {
       });
 
       this.bot.on('spawn', () => {
-         this.setItems();
+         this.setInventoryItems();
       });
 
       this.bot.on('error', (reason) => {
@@ -84,14 +115,17 @@ export class HolyWorldPremium {
          this.sessionsService.destroySession(this.botId);
       });
 
-      this.bot.on('messagestr', (message) => {
-         const timestamp = new Date();
-         this.emit('chat-message', { message, timestamp });
-         this.lastMessages.push({ message, timestamp });
+      this.bot.on('messagestr', (message, position, obj) => {
+         this.emit('chat-message', obj.json);
+
+         if (this.lastMessages.length > 30) {
+            this.lastMessages.shift();
+         }
+         this.lastMessages.push(obj.json);
       });
 
       this.bot.on('death', () => {
-         this.setItems();
+         this.setInventoryItems();
       });
 
       this.bot.on('health', () => {
@@ -109,7 +143,7 @@ export class HolyWorldPremium {
       this.bot.on('playerCollect', async (collector, collected) => {
          if (collector.username === this.bot.username) {
             await this.bot.waitForTicks(1);
-            this.setItems();
+            this.setInventoryItems();
          }
       });
    }
@@ -120,10 +154,13 @@ export class HolyWorldPremium {
       this.sessionsService.changeBotStatus(this.botId, 'offline');
    }
 
-   setItems() {
+   setInventoryItems() {
       const items = this.bot.inventory.slots;
-      this.emit('set-items', items);
+      const selectedItem = this.bot.inventory.selectedItem;
+      this.emit('set-inventory-items', items);
+      this.emit('set-inventory-selected-item', selectedItem);
    }
+
    getQuickBarSlot() {
       const quickBarSlot = this.bot.quickBarSlot;
       this.emit('set-quick-bar-slot', quickBarSlot);
@@ -132,8 +169,6 @@ export class HolyWorldPremium {
       const currentWindow = this.bot.currentWindow;
       this.emit('set-current-window', currentWindow);
    }
-
-   // emits
 
    setQuickBarSlot(slot: number) {
       this.bot.setQuickBarSlot(slot);
@@ -149,26 +184,63 @@ export class HolyWorldPremium {
 
    async moveItem(sourceSlot: number, destSlot: number) {
       await this.bot.moveSlotItem(sourceSlot, destSlot);
-      this.setItems();
+      this.setInventoryItems();
    }
 
    async throwItems(item: any) {
       await this.bot.tossStack(item.slot);
-      this.setItems();
+      this.setInventoryItems();
    }
 
    useItem() {
       this.bot.activateItem();
-      this.setItems();
+      this.setInventoryItems();
    }
 
    async clickWindow(slot: number, mouseButton: number) {
       await this.bot.clickWindow(slot, mouseButton, 0);
-      this.setItems();
+      if (this.bot.currentWindow) {
+         this.setCurrentWindow();
+      } else {
+         this.setInventoryItems();
+      }
    }
 
    closeWindow() {
       const currentWindow = this.bot.currentWindow;
       this.bot.closeWindow(currentWindow);
+   }
+   // emits
+
+   mergeMaps() {
+      // const mapsDirectory = __dirname;
+      // const mapSize = 128;
+      // console.log('merge_map');
+      // setTimeout(() => {
+      //    fs.readdir(mapsDirectory, async (err, files) => {
+      //       if (err) throw err;
+      //       const maps = files
+      //          .filter((file) => file.startsWith('map'))
+      //          .sort((a, b) => {
+      //             const [aIndex, bIndex] = [a, b].map((file) =>
+      //                parseInt(file.match(/_(\d+).png/))
+      //             );
+      //             return aIndex - bIndex;
+      //          });
+      //       const imageWidth = mapSize * Math.sqrt(maps.length);
+      //       const imageHeight = mapSize * Math.sqrt(maps.length);
+      //       const image = await new Jimp(imageWidth, imageHeight);
+      //       for (let i = maps.length - 1; i >= 0; i--) {
+      //          const x =
+      //             ((maps.length - 1 - i) % Math.sqrt(maps.length)) * mapSize;
+      //          const y =
+      //             Math.floor((maps.length - 1 - i) / Math.sqrt(maps.length)) *
+      //             mapSize;
+      //          const mapImage = await Jimp.read('${mapsDirectory}/${maps[i]}');
+      //          image.blit(mapImage, x, y);
+      //       }
+      //       image.write(path.join(__dirname + '/result.jpg'));
+      //    });
+      // }, 1000);
    }
 }

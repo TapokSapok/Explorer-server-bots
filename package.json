@@ -28,11 +28,16 @@
     "@nestjs/websockets": "^9.4.2",
     "@prisma/client": "^4.15.0",
     "crypto": "^1.0.1",
+    "fs": "^0.0.1-security",
+    "jimp": "^0.22.8",
     "mineflayer": "^4.8.1",
     "node-cache": "^5.1.2",
+    "path": "^0.12.7",
+    "pngjs-image": "^0.11.7",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.2.0",
-    "socket.io": "^4.6.2"
+    "socket.io": "^4.6.2",
+    "terminal-image": "^2.0.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^9.0.0",

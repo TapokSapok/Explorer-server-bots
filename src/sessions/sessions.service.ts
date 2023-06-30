@@ -33,7 +33,17 @@ export class SessionsService {
    changeSessionSocketId(botId: number, socketId: string) {
       const bot = this.bots.get(botId);
       if (bot) {
-         bot.socketId = socketId;
+         bot.socketId.push(socketId);
+      }
+   }
+
+   removeSessionSocketId(botId: number, socketId: string) {
+      const bot = this.bots.get(botId);
+      if (bot) {
+         const index = bot.socketId.indexOf(socketId);
+         if (index > -1) {
+            bot.socketId.splice(index, 1);
+         }
       }
    }
 
