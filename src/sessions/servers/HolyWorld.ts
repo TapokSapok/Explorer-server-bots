@@ -1,23 +1,10 @@
 import { SessionsService } from '../sessions.service';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { Socket } from 'socket.io';
-import { Injectable } from '@nestjs/common';
 import * as mineflayer from 'mineflayer';
-import { BotsRepository } from 'src/repositories/bots.repository';
-import { threadId } from 'worker_threads';
 import { SessionsGateway } from '../sessions.gateway';
-import { throws } from 'assert';
-import fs from 'fs';
-import Jimp from 'jimp';
-import PNGImage from 'pngjs-image';
-import path from 'path';
 import map from './map';
-
-/*
-   Для lastMessages сделать ограничение.
-
-
-*/
+import { Bot, Timer } from '@prisma/client';
+import { IDbBot } from './types';
+import { time } from 'console';
 
 export interface IItem {
    type: number;
@@ -30,10 +17,9 @@ export interface IItem {
    slot: number;
 }
 
-export class HolyWorldPremium {
+export class HolyWorld {
    bot: mineflayer.Bot;
    username: string;
-   // socketId: string;
    socketId: string[];
    botId: number;
    sessionsService: SessionsService;
@@ -43,6 +29,8 @@ export class HolyWorldPremium {
    }[];
    inventoryItems: IItem[];
    currentWindowItems: IItem[];
+   dbBot: IDbBot;
+   activeTimers: { id: number; timer: NodeJS.Timer }[];
 
    constructor({
       username,
@@ -50,11 +38,13 @@ export class HolyWorldPremium {
       socketId,
       sessionsService,
       sessionsGateway,
+      dbBot,
    }) {
       this.username = username;
       this.botId = botId;
       this.sessionsService = sessionsService;
       this.sessionsGateway = sessionsGateway;
+      this.dbBot = dbBot;
 
       this.socketId = [];
       this.socketId.push(socketId);
@@ -63,22 +53,90 @@ export class HolyWorldPremium {
       this.inventoryItems = [];
       this.currentWindowItems = [];
 
+      this.activeTimers = [];
+
       this.bot = mineflayer.createBot({
-         // username: this.username,
+         username: this.username,
          // host: 'localhost',
          // port: 57125,
          version: '1.18.2',
 
-         username: 'SapokTapok',
+         // username: 'SapokTapok',
          host: 'mc.HolyWorld.ru',
          port: 25565,
       });
 
       this.initEvents();
+      this.initMacros();
    }
 
    emit(event: string, data?: any) {
       this.sessionsGateway.emit(this.socketId, event, data);
+   }
+
+   async initMacros() {
+      const activeMacros = this.dbBot.macroses.find(
+         (m) => m.id === this.dbBot.activeMacrosId
+      );
+
+      if (!activeMacros) return;
+      if (activeMacros.id === 0) return;
+
+      const macrosIndex = this.dbBot.macroses.indexOf(activeMacros);
+      const blocks = this.dbBot.macroses[macrosIndex].blocks;
+
+      if (!blocks) return;
+
+      if (blocks[0].blockType === 'event' && blocks[0].event === 'spawn') {
+         this.bot.once('spawn', async () => {
+            await this.bot.waitForTicks(20);
+
+            for (let i = 1; i < blocks.length; i++) {
+               const blockType = blocks[i].blockType;
+               const event = blocks[i].event;
+               const action = blocks[i].action;
+               const value = blocks[i].value;
+               const secondValue = blocks[i].secondValue;
+
+               if (blockType === 'event') return;
+
+               switch (action) {
+                  case 'wait':
+                     secondValue === 'ms'
+                        ? await this.bot.waitForTicks(Number(value) / 100)
+                        : await this.bot.waitForTicks(Number(value) / 10);
+
+                     break;
+
+                  case 'message':
+                     this.bot.chat(value);
+                     break;
+
+                  case 'set-quick-bar-slot':
+                     this.bot.setQuickBarSlot(Number(value) - 1);
+                     break;
+
+                  case 'use-item':
+                     this.bot.activateItem(false);
+                     break;
+
+                  case 'click-window':
+                     await this.bot.clickWindow(
+                        Number(value),
+                        Number(secondValue),
+                        0
+                     );
+                     break;
+                  case 'timer': {
+                     value === 'true'
+                        ? this.enableTimer(Number(secondValue))
+                        : this.disableTimer(Number(secondValue));
+                     break;
+                  }
+               }
+            }
+         });
+      }
    }
 
    initEvents() {
@@ -86,9 +144,8 @@ export class HolyWorldPremium {
          const mapId = packet.itemDamage;
          this.emit('map-packet', packet);
          if (typeof packet.data != 'undefined' && packet.data) {
-            console.log(__dirname);
             map(packet.data).writeImage(__dirname + `/map${mapId}.png`);
-            this.mergeMaps();
+            // this.mergeMaps();
          }
       });
 
@@ -165,6 +222,7 @@ export class HolyWorldPremium {
       const quickBarSlot = this.bot.quickBarSlot;
       this.emit('set-quick-bar-slot', quickBarSlot);
    }
+
    setCurrentWindow() {
       const currentWindow = this.bot.currentWindow;
       this.emit('set-current-window', currentWindow);
@@ -210,37 +268,40 @@ export class HolyWorldPremium {
       const currentWindow = this.bot.currentWindow;
       this.bot.closeWindow(currentWindow);
    }
-   // emits
 
-   mergeMaps() {
-      // const mapsDirectory = __dirname;
-      // const mapSize = 128;
-      // console.log('merge_map');
-      // setTimeout(() => {
-      //    fs.readdir(mapsDirectory, async (err, files) => {
-      //       if (err) throw err;
-      //       const maps = files
-      //          .filter((file) => file.startsWith('map'))
-      //          .sort((a, b) => {
-      //             const [aIndex, bIndex] = [a, b].map((file) =>
-      //                parseInt(file.match(/_(\d+).png/))
-      //             );
-      //             return aIndex - bIndex;
-      //          });
-      //       const imageWidth = mapSize * Math.sqrt(maps.length);
-      //       const imageHeight = mapSize * Math.sqrt(maps.length);
-      //       const image = await new Jimp(imageWidth, imageHeight);
-      //       for (let i = maps.length - 1; i >= 0; i--) {
-      //          const x =
-      //             ((maps.length - 1 - i) % Math.sqrt(maps.length)) * mapSize;
-      //          const y =
-      //             Math.floor((maps.length - 1 - i) / Math.sqrt(maps.length)) *
-      //             mapSize;
-      //          const mapImage = await Jimp.read('${mapsDirectory}/${maps[i]}');
-      //          image.blit(mapImage, x, y);
-      //       }
-      //       image.write(path.join(__dirname + '/result.jpg'));
-      //    });
-      // }, 1000);
+   enableTimer(id: number) {
+      console.log('enable timer', id);
+      const timer = this.dbBot.timers.find((t) => t.id === id);
+      if (!timer) return;
+      if (timer.interval < 1) timer.interval = 1;
+
+      this.bot.chat(timer.message);
+
+      this.activeTimers.push({
+         id: timer.id,
+         timer: setInterval(() => {
+            this.bot.chat(timer.message);
+         }, timer.interval * 1000),
+      });
+      this.emit('timer-enabled', { id: timer.id });
+      console.log(this.activeTimers.map((t) => t.id));
+   }
+
+   disableTimer(id: number) {
+      console.log('disable timer', id);
+      const enabledTimer = this.activeTimers.find((t) => t.id === id);
+      if (!enabledTimer) {
+         return;
+      }
+      clearInterval(enabledTimer.timer);
+      this.activeTimers = [...this.activeTimers.filter((t) => t.id !== id)];
+      this.emit('timer-disabled', enabledTimer.id);
+   }
+
+   setTimers() {
+      this.emit(
+         'set-timers',
+         this.activeTimers.map((t) => t.id)
+      );
    }
 }

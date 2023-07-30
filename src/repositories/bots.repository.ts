@@ -11,7 +11,15 @@ export class BotsRepository {
          userId?: number;
       };
    }) {
-      return this.prisma.bot.findFirst(filter);
+      return this.prisma.bot.findFirst({
+         ...filter,
+         include: {
+            macroses: { include: { blocks: true } },
+            proxy: true,
+            whitelist: true,
+            timers: true,
+         },
+      });
    }
 
    async getBots(filter: {

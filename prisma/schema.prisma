@@ -1,15 +1,11 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")  
+  url      = env("DATABASE_URL")
 }
-
 
 model User {
   id Int @id @default(autoincrement()) 
@@ -19,26 +15,127 @@ model User {
   balance Int? @default(0)
   role String? @default("USER")
   bots Bot[]
-  operations Operation[]
+  proxies Proxy[]
+  payments Payment[]
+  partner Partner? 
+  promocodeActivations PromocodeActivation[]
+  createdAt DateTime @default(now())
 }
 
-model Operation {
+model Payment {
   id Int @id @default(autoincrement()) 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId Int 
   amount Int 
   type String
   date String 
+  createdAt DateTime @default(now())
 }
 
 model Bot {
   id Int @id @default(autoincrement()) 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId Int
+  proxy Proxy @relation(fields: [proxyId], references: [id], onDelete: Cascade)
+  proxyId Int
+  whitelist BotWhitelistUser[]
   isPremium Boolean
   username String
   server String
-  status String? @default("offline")
+  status String? @default("offline") 
   endDate String
+  createdAt DateTime @default(now())
+  macroses BotMacros[]
+  timers Timer[]
+  activeMacrosId Int?
 }
 
+model Timer {
+  id Int @id @default(autoincrement())
+  bot Bot @relation(fields: [botId], references: [id], onDelete: Cascade)
+  botId Int
+  message String? @default("")
+  interval Int? @default(0)
+  createdAt DateTime @default(now())
+}
+
+
+model BotWhitelistUser {
+  id Int @id @default(autoincrement())
+  bot Bot @relation(fields: [botId], references: [id], onDelete: Cascade)
+  botId Int
+  username String 
+}
+
+model BotMacros {
+  id Int @id @default(autoincrement())
+  bot Bot @relation(fields: [botId], references: [id], onDelete: Cascade)
+  botId Int 
+  title String?
+  blocks MacrosBlock[]
+}
+
+model MacrosBlock {
+  id Int @id @default(autoincrement())
+  macros BotMacros @relation(fields: [macrosId], references: [id], onDelete: Cascade)
+  macrosId Int 
+  blockType String 
+  event String?
+  action String?
+  value String 
+  secondValue String?
+}
+
+model Partner {
+  id Int @id @default(autoincrement())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade) 
+  userId Int @unique
+  income Int? @default(0)
+  activations Int? @default(0)
+  links PartnerLink[]
+  promocodes Promocode[]
+  createdAt DateTime @default(now())
+}
+
+model PartnerLink {
+  id Int @id @default(autoincrement())
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade) 
+  partnerId Int 
+  link String
+  service String
+}
+
+model Promocode {
+  id Int @id @default(autoincrement())
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade) 
+  partnerId Int 
+  type String 
+  value Int
+  code String
+  activations PromocodeActivation[]
+  createdAt DateTime @default(now())
+}
+
+model PromocodeActivation {
+  id Int @id @default(autoincrement())
+  promocode Promocode @relation(fields: [promocodeId], references: [id], onDelete: Cascade) 
+  promocodeId Int 
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade) 
+  userId Int
+  createdAt DateTime @default(now())
+}
+
+
+model Proxy {
+  id Int @id @default(autoincrement())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade) 
+  bots Bot[]
+  userId Int
+  marketId Int
+
+  adress String
+
+  status String @default("active")
+  createDate String
+  endDate String
+}

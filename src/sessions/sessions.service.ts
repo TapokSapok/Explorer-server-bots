@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { WebSocketServer } from '@nestjs/websockets';
 import { Socket, Server } from 'socket.io';
-import { HolyWorldPremium } from 'src/sessions/servers/HolyWorldPremium';
+import { HolyWorld } from 'src/sessions/servers/HolyWorld';
 import { BotsRepository } from 'src/repositories/bots.repository';
 import { SocketService } from 'src/socket/socket.service';
 
@@ -12,7 +12,7 @@ export class SessionsService {
 
    constructor(
       @Inject('BOTS_SESSIONS')
-      private readonly bots: Map<number, HolyWorldPremium>,
+      private readonly bots: Map<number, HolyWorld>,
       private botsRepository: BotsRepository
    ) {}
 
@@ -22,7 +22,6 @@ export class SessionsService {
 
    getSessionExist(botId: number) {
       const sessionExist = this.bots.has(botId);
-      console.log(sessionExist);
       return sessionExist;
    }
 
@@ -54,7 +53,7 @@ export class SessionsService {
       });
    }
 
-   createSession(botId: number, newBot: HolyWorldPremium) {
+   createSession(botId: number, newBot: HolyWorld) {
       console.log('Новая сессия:', botId);
       this.bots.set(botId, newBot);
       const botsSize = this.bots.size;

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { User } from '@prisma/client';
 import { Socket } from 'socket.io';
@@ -44,12 +44,13 @@ export class AuthService {
       const bot = await this.botsRepository.getBot({ where: { id: botId } });
 
       if (!bot) {
-         client.emit('bot-not-found');
+         client.emit('no-access');
          client.disconnect();
          return;
       }
 
       if (bot.userId !== user.id && user.role !== 'ADMIN') {
+         client.emit('no-access');
          client.disconnect();
          return;
       }
@@ -57,6 +58,7 @@ export class AuthService {
       const currentTime = Date.now();
       const botEndTime = new Date(bot.endDate).getTime();
       if (botEndTime < currentTime) {
+         client.emit('times-up');
          client.disconnect();
          return;
       }

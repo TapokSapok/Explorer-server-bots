@@ -4,9 +4,10 @@ import {
    WebSocketServer,
 } from '@nestjs/websockets';
 import { Socket, Server } from 'socket.io';
-import { HolyWorldPremium } from 'src/sessions/servers/HolyWorldPremium';
+import { HolyWorld } from 'src/sessions/servers/HolyWorld';
 import { BotsRepository } from 'src/repositories/bots.repository';
 import { SessionsService } from './sessions.service';
+import { HttpException, HttpStatus } from '@nestjs/common';
 
 @WebSocketGateway()
 export class SessionsGateway {
@@ -24,8 +25,6 @@ export class SessionsGateway {
             const socket = this.server?.sockets.sockets.get(socketId);
             if (socket) {
                socket.emit(event, data);
-            } else {
-               
             }
          });
       }
@@ -33,22 +32,25 @@ export class SessionsGateway {
 
    @SubscribeMessage('connect-to-server')
    async handleMessage(client: Socket, { botId }: { botId: number }) {
+      if (typeof botId !== 'number') {
+         throw new HttpException('Не правильный botId', HttpStatus.BAD_REQUEST);
+      }
+
       const bot = await this.botsRepository.getBot({ where: { id: botId } });
 
       const botOptions = {
          username: bot.username,
+         dbBot: bot,
          socketId: client.id,
          botId: botId,
          sessionsService: this.sessionsService,
          sessionsGateway: this,
       };
 
-      let newBot: HolyWorldPremium;
+      let newBot: HolyWorld;
       switch (bot.server) {
          case 'HolyWorld':
-            bot.isPremium
-               ? (newBot = new HolyWorldPremium(botOptions))
-               : (newBot = new HolyWorldPremium(botOptions));
+            newBot = new HolyWorld(botOptions);
             break;
       }
 
@@ -171,6 +173,31 @@ export class SessionsGateway {
       const session = this.sessionsService.getSession(botId);
       if (session) {
          session.setCurrentWindow();
+      }
+   }
+   @SubscribeMessage('enable-timer')
+   enableTimer(client: Socket, { id }) {
+      const botId = Number(client.handshake.headers.botid);
+      const session = this.sessionsService.getSession(botId);
+      if (session) {
+         session.enableTimer(id);
+      }
+   }
+   @SubscribeMessage('disable-timer')
+   disableTimer(client: Socket, { id }) {
+      const botId = Number(client.handshake.headers.botid);
+      const session = this.sessionsService.getSession(botId);
+      if (session) {
+         session.disableTimer(id);
+      }
+   }
+
+   @SubscribeMessage('get-timers')
+   getTimers(client: Socket) {
+      const botId = Number(client.handshake.headers.botid);
+      const session = this.sessionsService.getSession(botId);
+      if (session) {
+         session.setTimers();
       }
    }
 }
